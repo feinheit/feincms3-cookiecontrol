@@ -1,5 +1,5 @@
 /**
- * cookie consent banner, panel and revoke button rendering
+ * cookie consent banner and panel rendering
  */
 // eslint-disable-next-line no-extra-semi
 ;(function () {
@@ -10,12 +10,11 @@
     ),
     banner = null,
     panel = null,
-    revoke = null,
     checkboxes = [],
     injectedScripts = []
 
   /**
-   * Recursive createElement wrapper for rendering panel, banner and revoke views
+   * Recursive createElement wrapper for rendering panel and banner views
    *
    * @param {String} tag
    * @param {String} className
@@ -89,30 +88,6 @@
       outerWrap.appendChild(buttonWrap)
       banner.appendChild(outerWrap)
       mainElement.appendChild(banner)
-    }
-  }
-
-  function renderRevoke() {
-    if (revoke != null) {
-      revoke.style.display = ""
-      return
-    }
-
-    if (settings.revoke) {
-      revoke = addElement("div", "f3cc-revoke")
-      let outerWrap = addElement("div", "outer")
-      addElement("div", "inner", "", outerWrap)
-      let buttonWrap = addElement("div", "f3cc-buttons")
-      addElement(
-        "a",
-        "btn btn-revoke",
-        settings.revoke.buttonPanel,
-        buttonWrap,
-        onPanelClick
-      )
-      outerWrap.appendChild(buttonWrap)
-      revoke.appendChild(outerWrap)
-      mainElement.appendChild(revoke)
     }
   }
 
@@ -249,7 +224,6 @@
     saveSelections()
     hide(banner)
     hide(panel)
-    renderRevoke()
     injectNewScripts()
   }
 
@@ -258,7 +232,6 @@
     acceptAll()
     hide(banner)
     hide(panel)
-    renderRevoke()
     injectNewScripts()
   }
 
@@ -271,7 +244,6 @@
   function onPanelClick(e) {
     e.preventDefault()
     hide(banner)
-    hide(revoke)
     revokeCookie()
     renderPanel()
   }
@@ -304,7 +276,7 @@
   function init() {
     injectNewScripts()
 
-    document.body.addEventListener("click", function(e) {
+    document.body.addEventListener("click", function (e) {
       const btn = e.target.closest("[data-open-f3cc-panel]")
       if (btn) {
         onPanelClick(e)

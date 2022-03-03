@@ -5,7 +5,9 @@
 ;(function () {
   let cookieName = "f3cc",
     mainElement = document.getElementById("f3cc"),
-    settings = JSON.parse(document.getElementById("f3cc-data").textContent),
+    settings =
+      window.f3ccData ||
+      JSON.parse(document.getElementById("f3cc-data").textContent),
     banner = null,
     panel = null,
     modify = null,

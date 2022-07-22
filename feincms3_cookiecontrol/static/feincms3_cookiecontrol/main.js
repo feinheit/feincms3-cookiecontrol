@@ -1,5 +1,5 @@
 /**
- * cookie consent banner, panel and modify button rendering
+ * cookie consent banner and modify button rendering
  */
 // eslint-disable-next-line no-extra-semi
 ;(function () {
@@ -7,13 +7,11 @@
     mainElement = document.getElementById("f3cc"),
     settings = JSON.parse(document.getElementById("f3cc-data").textContent),
     banner = null,
-    panel = null,
     modify = null,
-    checkboxes = [],
     injectedScripts = {}
 
   /**
-   * Recursive createElement wrapper for rendering panel, banner and modify views
+   * Recursive createElement wrapper for rendering banner and modify views
    *
    * @param {String} tag
    * @param {String} className
@@ -72,10 +70,10 @@
       let buttonWrap = addElement("div", "f3cc-buttons")
       addElement(
         "a",
-        "btn btn-panel",
-        settings.banner.buttonPanel,
+        "btn btn-reject",
+        settings.banner.buttonReject,
         buttonWrap,
-        onPanelClick
+        onRejectAllClick
       )
       addElement(
         "a",
@@ -106,7 +104,10 @@
         "btn btn-modify",
         settings.modify.buttonPanel,
         buttonWrap,
-        onPanelClick
+        (event) => {
+          event.preventDefault()
+          renderBanner()
+        }
       )
       outerWrap.appendChild(buttonWrap)
       modify.appendChild(outerWrap)
@@ -114,105 +115,16 @@
     }
   }
 
-  function renderPanel() {
-    disableScrolling(true)
-
-    if (panel != null) {
-      panel.style.display = ""
-      return
-    }
-
-    if (settings.panel) {
-      panel = addElement("div", "f3cc f3cc-panel")
-      let outerWrap = addElement("div", "outer")
-      addElement("div", "inner", settings.panel, outerWrap)
-
-      let form = document.createElement("form")
-      for (let categoryId in settings.categories) {
-        let categoryWrap = addElement("div")
-        categoryWrap.className = "f3cc-category"
-        let inputLabel = addElement("label")
-
-        let categoryInput = document.createElement("input")
-        categoryInput.name = categoryId
-        categoryInput.id = `f3cc-category-${categoryId}`
-        categoryInput.type = "checkbox"
-        inputLabel.htmlFor = categoryInput.id
-
-        if (
-          settings.categories[categoryId].preselected ||
-          consentedCategories().indexOf(categoryId) >= 0
-        ) {
-          categoryInput.checked = true
-        }
-
-        if (settings.categories[categoryId].disabled) {
-          categoryInput.disabled = true
-        }
-
-        checkboxes.push(categoryInput)
-        addElement(
-          "div",
-          "f3cc-title",
-          settings.categories[categoryId].title,
-          inputLabel
-        )
-        addElement(
-          "div",
-          "f3cc-description",
-          settings.categories[categoryId].description,
-          inputLabel
-        )
-
-        categoryWrap.append(categoryInput, inputLabel)
-        form.append(categoryWrap)
-      }
-      outerWrap.appendChild(form)
-
-      let buttonWrap = addElement("div", "f3cc-buttons")
-      addElement(
-        "a",
-        "btn btn-cancel",
-        settings.panel.buttonCancel,
-        buttonWrap,
-        onCancelClick
-      )
-      addElement(
-        "a",
-        "btn btn-save",
-        settings.panel.buttonSave,
-        buttonWrap,
-        onSaveClick
-      )
-
-      outerWrap.appendChild(buttonWrap)
-      panel.appendChild(outerWrap)
-      mainElement.appendChild(panel)
-    }
-  }
-
-  function saveSelections() {
-    let consented = []
-    for (let i in checkboxes) {
-      if (checkboxes[i].checked) {
-        consented.push(checkboxes[i].name)
-      }
-    }
-    setCookie(consented)
-  }
-
   function acceptAll() {
-    let consented = []
-    for (let categoryId in settings.categories) {
-      consented.push(categoryId)
-    }
-    setCookie(consented)
+    setCookie("accepted")
   }
 
-  function setCookie(consented) {
-    let cookie = `${cookieName}=${consented.join(
-      ","
-    )};max-age=31536000;path=/;sameSite=Strict`
+  function rejectAll() {
+    setCookie("rejected")
+  }
+
+  function setCookie(value) {
+    let cookie = `${cookieName}=${value};max-age=31536000;path=/;sameSite=Strict`
     if (settings.domain) {
       cookie += `;domain=${settings.domain}`
     }
@@ -220,72 +132,34 @@
   }
 
   function getCookie() {
-    let cookies = document.cookie.split(";")
-    let cookie = false
-    if (typeof cookies !== "undefined") {
-      cookies.forEach((docCookie) => {
-        if (docCookie.split("=")[0].trim() == cookieName) {
-          cookie = docCookie.split("=")[1]
-        }
-      })
+    const re = new RegExp(`\\b${cookieName}=(.+?)\\b`)
+    const matches = document.cookie.match(re)
+    if (matches && matches.length) {
+      return matches[1]
     }
-    return cookie
   }
 
-  function consentedCategories() {
-    let cookie = getCookie()
-    return cookie ? cookie.split(",") : []
+  function getConsent() {
+    return getCookie() === "accepted"
   }
 
   function hide(el) {
     if (el != null) el.style.display = "none"
   }
 
-  function disableScrolling(disable) {
-    if (disable) {
-      // When the modal is shown, we want a fixed body
-      document.body.style.top = `-${window.scrollY}px`
-      document.body.classList.add("f3cc-overlay")
-    } else {
-      const scrollY = document.body.style.top
-      document.body.style.top = ""
-      document.body.classList.remove("f3cc-overlay")
-      window.scrollTo(0, parseInt(scrollY || "0", 10) * -1)
-    }
-  }
-
-  function onSaveClick(e) {
-    e.preventDefault()
-    saveSelections()
-    hide(banner)
-    hide(panel)
-    disableScrolling(false)
-    renderModify()
-    injectNewScripts()
-  }
-
   function onAcceptAllClick(e) {
     e.preventDefault()
     acceptAll()
     hide(banner)
-    hide(panel)
-    disableScrolling(false)
     renderModify()
     injectNewScripts()
   }
 
-  function onCancelClick(e) {
+  function onRejectAllClick(e) {
     e.preventDefault()
-    hide(panel)
-    disableScrolling(false)
-    init()
-  }
-
-  function onPanelClick(e) {
-    e.preventDefault()
+    rejectAll()
     hide(banner)
-    hide(modify)
-    renderPanel()
+    renderModify()
   }
 
   /* Thanks, https://stackoverflow.com/a/20584396 */
@@ -302,6 +176,7 @@
 
     return node
   }
+
   function nodeScriptClone(node) {
     let script = document.createElement("script")
     script.text = node.innerHTML
@@ -333,12 +208,9 @@
   }
 
   function injectNewScripts() {
-    let consenteds = consentedCategories()
-    for (let cookieCategory in settings.categories) {
-      if (consenteds.includes(cookieCategory)) {
-        for (let cookie of settings.categories[cookieCategory].cookies) {
-          injectScript(cookie.name, cookie.inject_if)
-        }
+    if (getConsent()) {
+      for (let cookie of settings.cookies) {
+        injectScript(cookie.name, cookie.inject_if)
       }
     }
   }
@@ -347,9 +219,9 @@
     injectNewScripts()
 
     document.body.addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-open-f3cc-panel]")
+      const btn = e.target.closest("[data-open-f3cc-banner]")
       if (btn) {
-        onPanelClick(e)
+        renderBanner()
       }
     })
 
